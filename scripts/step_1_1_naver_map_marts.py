@@ -1,7 +1,10 @@
-"""Step 1-1: 네이버 지도에서 마트/슈퍼마켓 검색"""
+"""Step 1-1: 네이버 지도에서 마트/슈퍼마켓 검색
+네이버 지도 내부 API 직접 호출 + Playwright iframe 파싱 폴백
+"""
 import asyncio
 import json
 import re
+import urllib.parse
 from playwright.async_api import async_playwright
 from config import (
     NAVER_MAP_URL, BROWSER_ARGS, VIEWPORT, USER_AGENT,
@@ -10,183 +13,266 @@ from config import (
 )
 
 
-async def search_naver_map(page, query, session_path):
-    """네이버 지도에서 검색 후 결과 파싱"""
+async def search_via_api_intercept(page, query, session_path):
+    """네이버 지도 페이지 로드 시 모든 API 응답을 캡처하여 데이터 추출"""
     results = []
+    api_data = []
 
-    log(session_path, f"네이버 지도 검색: {query}")
-
-    # 검색 URL 직접 접근
-    search_url = f"https://map.naver.com/p/search/{query}"
-    await page.goto(search_url, wait_until="networkidle", timeout=30000)
-    await page.wait_for_timeout(3000)
-
-    # 검색 결과 iframe 진입 (네이버 지도는 iframe 구조)
-    search_iframe = None
-    for frame in page.frames:
-        if "search" in frame.url:
-            search_iframe = frame
-            break
-
-    if not search_iframe:
-        # iframe 없이 직접 접근 시도
-        search_iframe = page
-
-    # 결과 리스트 수집 — 네이버 지도 검색 결과 셀렉터
-    # 네이버 지도는 자주 변경되므로 여러 셀렉터 시도
-    selectors = [
-        "li.VLTHu",           # 검색 결과 리스트 아이템
-        "li[data-laim-exp-id]",
-        ".place_bluelink",
-        "a.place_bluelink",
-        "li.UEzoS",
-    ]
-
-    items = []
-    for sel in selectors:
+    async def capture(response):
+        url = response.url
         try:
-            await search_iframe.wait_for_selector(sel, timeout=5000)
-            items = await search_iframe.query_selector_all(sel)
-            if items:
-                log(session_path, f"셀렉터 '{sel}'로 {len(items)}건 발견")
-                break
+            # 네이버 지도 내부 검색 API 패턴들
+            if response.status == 200 and any(k in url for k in [
+                "map.naver.com/p/api/search",
+                "map.naver.com/v5/api/search",
+                "map.naver.com/p/api/place",
+                "pcmap-api.place.naver.com",
+                "pcmap.place.naver.com/api",
+                "place.map.naver.com",
+            ]):
+                body = await response.text()
+                if body and (body.lstrip().startswith("{") or body.lstrip().startswith("[")):
+                    data = json.loads(body)
+                    api_data.append({"url": url, "data": data})
         except Exception:
-            continue
+            pass
 
-    if not items:
-        log(session_path, f"검색 결과 없음: {query}")
-        # 스크린샷 저장
-        await page.screenshot(path=f"{session_path}/screenshots/naver-map-{query}.png")
-        return results
+    page.on("response", capture)
 
-    # 각 항목 파싱
-    for i, item in enumerate(items):
-        try:
-            entry = {}
-
-            # 업소명 추출
-            name_el = await item.query_selector(".place_bluelink, .TYaxT, a[class*='name'], span[class*='title']")
-            if name_el:
-                entry["name"] = (await name_el.inner_text()).strip()
-            else:
-                # 첫번째 링크 텍스트
-                first_link = await item.query_selector("a")
-                if first_link:
-                    entry["name"] = (await first_link.inner_text()).strip()
-
-            if not entry.get("name"):
-                continue
-
-            # 주소 추출
-            addr_el = await item.query_selector(".LDgIH, .address, span[class*='addr']")
-            if addr_el:
-                entry["address"] = (await addr_el.inner_text()).strip()
-
-            # 전화번호 추출
-            phone_el = await item.query_selector(".xlx7Q, .phone, span[class*='tel']")
-            if phone_el:
-                entry["phone"] = (await phone_el.inner_text()).strip()
-
-            # 카테고리 추출
-            cat_el = await item.query_selector(".YzBgS, .category, span[class*='category']")
-            if cat_el:
-                entry["category"] = (await cat_el.inner_text()).strip()
-
-            entry["source_query"] = query
-            entry["lat"] = None  # 상세 페이지에서 추출 가능
-            entry["lng"] = None
-
-            results.append(entry)
-
-        except Exception as e:
-            log(session_path, f"항목 {i} 파싱 실패: {e}")
-            continue
+    search_url = f"https://map.naver.com/p/search/{urllib.parse.quote(query)}"
+    await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+    # 검색 결과 로드 대기 — networkidle 대신 충분한 시간 대기
+    await page.wait_for_timeout(8000)
 
     # 스크린샷
     await page.screenshot(path=f"{session_path}/screenshots/naver-map-{query}.png")
-    log(session_path, f"검색 완료: {query} → {len(results)}건")
+
+    page.remove_listener("response", capture)
+
+    # 캡처된 API 데이터에서 장소 목록 추출
+    for item in api_data:
+        places = extract_places_from_response(item["data"])
+        if places:
+            log(session_path, f"API [{item['url'][:80]}...] → {len(places)}건")
+            results.extend(places)
+
+    # 결과에 source_query 추가
+    for r in results:
+        r["source_query"] = query
+
+    if results:
+        log(session_path, f"API 캡처 성공: {query} → {len(results)}건")
 
     return results
 
 
-async def extract_from_api(page, query, session_path):
-    """네이버 지도 내부 API 응답 캡처로 구조화된 데이터 추출"""
-    results = []
-    api_responses = []
+def extract_places_from_response(data):
+    """다양한 API 응답 구조에서 장소 리스트 추출"""
+    places = []
 
-    # API 응답 캡처 핸들러
-    async def handle_response(response):
-        url = response.url
-        if "place" in url and ("search" in url or "list" in url) and response.status == 200:
-            try:
-                body = await response.text()
-                if body.startswith("{") or body.startswith("["):
-                    api_responses.append(json.loads(body))
-            except Exception:
-                pass
+    if isinstance(data, list):
+        for item in data:
+            place = parse_place(item)
+            if place:
+                places.append(place)
+        return places
 
-    page.on("response", handle_response)
+    if not isinstance(data, dict):
+        return places
 
-    search_url = f"https://map.naver.com/p/search/{query}"
-    await page.goto(search_url, wait_until="networkidle", timeout=30000)
-    await page.wait_for_timeout(5000)
+    # 패턴 1: result.place.list
+    try:
+        place_list = data.get("result", {}).get("place", {}).get("list", [])
+        if place_list:
+            for item in place_list:
+                place = parse_place(item)
+                if place:
+                    places.append(place)
+            return places
+    except (AttributeError, TypeError):
+        pass
 
-    page.remove_listener("response", handle_response)
+    # 패턴 2: result.list
+    try:
+        result_list = data.get("result", {}).get("list", [])
+        if result_list:
+            for item in result_list:
+                place = parse_place(item)
+                if place:
+                    places.append(place)
+            return places
+    except (AttributeError, TypeError):
+        pass
 
-    # API 응답에서 데이터 추출
-    for resp_data in api_responses:
+    # 패턴 3: data 자체가 장소 리스트를 포함하는 다른 키
+    for key in ["places", "items", "list", "data", "results", "searchResult"]:
         try:
-            # 네이버 지도 API 응답 구조 파싱
-            place_list = None
-            if isinstance(resp_data, dict):
-                # result.place.list 또는 result.list 패턴
-                if "result" in resp_data:
-                    result = resp_data["result"]
-                    if "place" in result:
-                        place_list = result["place"].get("list", [])
-                    elif "list" in result:
-                        place_list = result["list"]
-                elif "places" in resp_data:
-                    place_list = resp_data["places"]
-            elif isinstance(resp_data, list):
-                place_list = resp_data
-
-            if place_list:
-                for place in place_list:
-                    entry = {
-                        "name": place.get("name", place.get("title", "")),
-                        "address": place.get("roadAddress", place.get("address", "")),
-                        "phone": place.get("phone", place.get("tel", "")),
-                        "category": place.get("category", place.get("categoryName", "")),
-                        "lat": place.get("y", place.get("lat", None)),
-                        "lng": place.get("x", place.get("lng", None)),
-                        "source_query": query,
-                    }
-                    if entry["name"]:
-                        # 좌표를 float으로 변환
-                        if entry["lat"]:
-                            entry["lat"] = float(entry["lat"])
-                        if entry["lng"]:
-                            entry["lng"] = float(entry["lng"])
-                        results.append(entry)
-        except Exception as e:
-            log(session_path, f"API 응답 파싱 실패: {e}")
+            items = data.get(key, [])
+            if isinstance(items, list) and items:
+                for item in items:
+                    place = parse_place(item)
+                    if place:
+                        places.append(place)
+                if places:
+                    return places
+        except (AttributeError, TypeError):
             continue
 
+    # 패턴 4: 재귀적으로 탐색
+    for key, value in data.items():
+        if isinstance(value, dict):
+            nested = extract_places_from_response(value)
+            if nested:
+                return nested
+
+    return places
+
+
+def parse_place(item):
+    """개별 장소 데이터를 표준 형식으로 변환"""
+    if not isinstance(item, dict):
+        return None
+
+    name = (
+        item.get("name") or item.get("title") or item.get("placeName") or
+        item.get("businessName") or ""
+    )
+    if not name:
+        return None
+
+    address = (
+        item.get("roadAddress") or item.get("address") or
+        item.get("fullRoadAddress") or item.get("fullAddress") or ""
+    )
+
+    phone = (
+        item.get("phone") or item.get("tel") or
+        item.get("virtualPhone") or item.get("phoneNumber") or ""
+    )
+
+    category = (
+        item.get("category") or item.get("categoryName") or
+        item.get("businessCategory") or ""
+    )
+
+    lat = item.get("y") or item.get("lat") or item.get("latitude") or None
+    lng = item.get("x") or item.get("lng") or item.get("longitude") or None
+
+    try:
+        if lat is not None:
+            lat = float(lat)
+        if lng is not None:
+            lng = float(lng)
+    except (ValueError, TypeError):
+        lat = None
+        lng = None
+
+    return {
+        "name": str(name).strip(),
+        "address": str(address).strip(),
+        "phone": str(phone).strip(),
+        "category": str(category).strip(),
+        "lat": lat,
+        "lng": lng,
+    }
+
+
+async def search_via_iframe(page, query, session_path):
+    """네이버 지도 검색 결과 iframe에서 DOM 파싱"""
+    results = []
+
+    log(session_path, f"iframe 파싱 시도: {query}")
+
+    search_url = f"https://map.naver.com/p/search/{urllib.parse.quote(query)}"
+    await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+    await page.wait_for_timeout(8000)
+
+    # searchIframe 찾기
+    search_iframe = None
+    for frame in page.frames:
+        frame_url = frame.url
+        if "search" in frame_url and "naver" in frame_url:
+            search_iframe = frame
+            break
+
+    if not search_iframe:
+        # 모든 프레임 URL 로그
+        for f in page.frames:
+            log(session_path, f"  frame: {f.url[:100]}")
+        log(session_path, "searchIframe 찾기 실패")
+        return results
+
+    log(session_path, f"searchIframe 발견: {search_iframe.url[:80]}")
+
+    # iframe 내에서 리스트 아이템 찾기
+    # 네이버 지도 검색 결과의 일반적 구조: <li> 안에 업소 정보
+    try:
+        await search_iframe.wait_for_selector("li", timeout=10000)
+        items = await search_iframe.query_selector_all("li")
+
+        for item in items:
+            try:
+                text = await item.inner_text()
+                lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+                if len(lines) < 2:
+                    continue
+
+                # 첫줄이 업소명일 가능성 높음
+                name = lines[0]
+
+                # 너무 짧거나 숫자만인 경우 skip
+                if len(name) < 2 or name.isdigit():
+                    continue
+
+                # 주소/전화 등 추출
+                address = ""
+                phone = ""
+                category = ""
+
+                for line in lines[1:]:
+                    if re.match(r'서울|경기|인천|부산|대구|광주|대전|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주', line):
+                        address = line
+                    elif re.match(r'0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}', line):
+                        phone = line
+                    elif not category and len(line) < 20 and not line[0].isdigit():
+                        category = line
+
+                # 유효한 항목만 추가 (마트/슈퍼 관련)
+                entry = {
+                    "name": name,
+                    "address": address,
+                    "phone": phone,
+                    "category": category,
+                    "lat": None,
+                    "lng": None,
+                    "source_query": query,
+                }
+                results.append(entry)
+
+            except Exception:
+                continue
+
+    except Exception as e:
+        log(session_path, f"iframe DOM 파싱 실패: {e}")
+
+    # 스크린샷
+    await page.screenshot(path=f"{session_path}/screenshots/naver-map-iframe-{query}.png")
+
     if results:
-        log(session_path, f"API 캡처로 {len(results)}건 추출: {query}")
+        log(session_path, f"iframe 파싱: {query} → {len(results)}건")
 
     return results
 
 
 def deduplicate(results):
-    """이름+주소 기준 중복 제거"""
+    """이름 기준 중복 제거"""
     seen = set()
     unique = []
     for r in results:
-        key = (r.get("name", ""), r.get("address", ""))
-        if key not in seen:
-            seen.add(key)
+        name = r.get("name", "").strip()
+        if name and name not in seen:
+            seen.add(name)
             unique.append(r)
     return unique
 
@@ -208,15 +294,15 @@ async def run(region, session_path):
         for category in DEFAULT_SEARCH_CATEGORIES:
             query = f"{region} {category}"
 
-            # 방법 1: API 캡처 시도
-            api_results = await extract_from_api(page, query, session_path)
+            # 방법 1: API 응답 캡처 (가장 정확)
+            api_results = await search_via_api_intercept(page, query, session_path)
 
             if api_results:
                 all_results.extend(api_results)
             else:
-                # 방법 2: DOM 파싱 폴백
-                dom_results = await search_naver_map(page, query, session_path)
-                all_results.extend(dom_results)
+                # 방법 2: iframe DOM 파싱 폴백
+                iframe_results = await search_via_iframe(page, query, session_path)
+                all_results.extend(iframe_results)
 
             random_delay(DELAY_MEDIUM)
 
@@ -239,7 +325,6 @@ if __name__ == "__main__":
     region = sys.argv[1] if len(sys.argv) > 1 else "이촌역"
     session_id, session_path = create_session(region)
 
-    # config 저장
     save_json({
         "region": region,
         "session_id": session_id,

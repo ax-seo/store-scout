@@ -1,240 +1,188 @@
-"""Step 2-2: 네이버 부동산에서 상가 매물 수집"""
+"""Step 2-2: 네이버 부동산에서 상가 매물 수집
+네이버 검색 결과 페이지의 부동산 매물 섹션 파싱
+(fin.land.naver.com은 지도 타일 기반이라 API 캡처 불가 → 검색 결과 활용)
+"""
 import asyncio
 import json
 import re
+import urllib.parse
 from playwright.async_api import async_playwright
 from config import (
-    NAVER_LAND_URL, BROWSER_ARGS, VIEWPORT, USER_AGENT, DELAY_SHORT,
+    BROWSER_ARGS, VIEWPORT, USER_AGENT, DELAY_SHORT,
     save_json, load_json, log, random_delay
 )
 
 
-async def capture_land_api(page, region, session_path):
-    """네이버 부동산 내부 API 응답 캡처"""
-    articles = []
-    api_responses = []
+async def search_naver_land_listings(page, region, session_path):
+    """네이버 검색에서 부동산 매물 섹션 파싱"""
+    listings = []
 
-    async def handle_response(response):
-        url = response.url
-        # 매물 리스트 API 응답 캡처
-        if ("article" in url or "complex" in url) and response.status == 200:
-            try:
-                content_type = response.headers.get("content-type", "")
-                if "json" in content_type or "javascript" in content_type:
-                    body = await response.text()
-                    if body.startswith("{") or body.startswith("["):
-                        api_responses.append({"url": url, "data": json.loads(body)})
-            except Exception:
-                pass
+    query = f"{region} 상가 매물"
+    encoded = urllib.parse.quote(query)
+    search_url = f"https://search.naver.com/search.naver?query={encoded}"
 
-    page.on("response", handle_response)
-
-    # 네이버 부동산 상가 매물 페이지 접속
-    # 지역명으로 검색 후 상가 필터
-    await page.goto(f"{NAVER_LAND_URL}/offices", wait_until="networkidle", timeout=30000)
-    await page.wait_for_timeout(3000)
-
-    # 검색창에 지역 입력
-    search_selectors = [
-        "input[id='queryInput']",
-        "input[placeholder*='검색']",
-        "input[type='search']",
-        ".search_area input",
-    ]
-
-    search_input = None
-    for sel in search_selectors:
-        try:
-            search_input = await page.query_selector(sel)
-            if search_input:
-                break
-        except Exception:
-            continue
-
-    if search_input:
-        await search_input.click()
-        await search_input.fill("")
-        await search_input.type(region, delay=80)
-        await page.wait_for_timeout(1500)
-        await page.keyboard.press("Enter")
-        await page.wait_for_timeout(3000)
-
-        # 자동완성 결과 클릭 (첫번째)
-        autocomplete_selectors = [
-            ".search_list li:first-child",
-            "[class*='suggest'] li:first-child",
-            "[class*='autocomplete'] li:first-child",
-        ]
-        for sel in autocomplete_selectors:
-            try:
-                ac = await page.query_selector(sel)
-                if ac:
-                    await ac.click()
-                    await page.wait_for_timeout(3000)
-                    break
-            except Exception:
-                continue
-
-    # 상가 필터 적용
-    await apply_commercial_filter(page, session_path)
+    log(session_path, f"네이버 검색: {query}")
+    await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
     await page.wait_for_timeout(5000)
 
-    page.remove_listener("response", handle_response)
+    await page.screenshot(path=f"{session_path}/screenshots/naver-search-sangga.png")
 
-    # API 응답에서 매물 데이터 추출
-    for resp in api_responses:
-        try:
-            data = resp["data"]
-            article_list = None
+    # 방법 1: 부동산 매물 테이블 파싱
+    # 네이버 검색에서 "이촌역 상가 매물" → 부동산 매물 리스트 섹션
+    body_text = await page.inner_text("body")
 
-            if isinstance(data, dict):
-                # articleList 또는 body 패턴
-                if "articleList" in data:
-                    article_list = data["articleList"]
-                elif "body" in data:
-                    article_list = data["body"]
-                elif "result" in data:
-                    result = data["result"]
-                    if isinstance(result, dict) and "list" in result:
-                        article_list = result["list"]
+    # 매물 테이블 패턴: "거래  매물종류  소재지  건물종류" 이후 행들
+    table_section = extract_listing_table(body_text)
+    if table_section:
+        listings.extend(table_section)
+        log(session_path, f"테이블 파싱: {len(table_section)}건")
 
-            if article_list:
-                for art in article_list:
-                    entry = parse_api_article(art)
-                    if entry:
-                        articles.append(entry)
-        except Exception as e:
-            log(session_path, f"API 매물 파싱 실패: {e}")
+    # 방법 2: AI 요약 섹션에서 매물 정보 추출
+    ai_listings = extract_ai_summary_listings(body_text)
+    if ai_listings:
+        listings.extend(ai_listings)
+        log(session_path, f"AI 요약 파싱: {len(ai_listings)}건")
 
-    return articles
+    # 방법 3: 더 많은 매물 확인 — "네이버 부동산" 링크 클릭
+    land_link = await page.query_selector("a[href*='land.naver.com'], a:has-text('네이버페이부동산')")
+    if land_link and await land_link.is_visible():
+        href = await land_link.get_attribute("href")
+        if href:
+            log(session_path, f"네이버 부동산 링크: {href}")
 
+    # 매물 수 정보 추출
+    count_match = re.search(r'전체\((\d+)\)\s+매매\((\d+)\)\s+전세\((\d+)\)\s+월세\((\d+)\)', body_text)
+    if count_match:
+        log(session_path, f"매물 현황: 전체 {count_match.group(1)}, 매매 {count_match.group(2)}, 전세 {count_match.group(3)}, 월세 {count_match.group(4)}")
 
-async def apply_commercial_filter(page, session_path):
-    """상가 필터 적용 (아파트/사무실/공장 등 제외)"""
-    # 매물 종류 필터 버튼 찾기
-    filter_selectors = [
-        "text=상가",
-        "[data-value='D02']",
-        "label:has-text('상가')",
-        "button:has-text('상가')",
-    ]
-
-    for sel in filter_selectors:
-        try:
-            el = await page.query_selector(sel)
-            if el:
-                await el.click()
-                await page.wait_for_timeout(2000)
-                log(session_path, "상가 필터 적용됨")
-                return True
-        except Exception:
-            continue
-
-    log(session_path, "상가 필터 버튼 찾기 실패 — 기본 필터로 진행")
-    return False
+    return listings
 
 
-def parse_api_article(art):
-    """API 응답의 개별 매물 파싱"""
-    try:
-        # 거래 유형 판별
-        trade_type = art.get("tradeTypeName", art.get("dealOrWarrantPrc", ""))
+def extract_listing_table(text):
+    """텍스트에서 부동산 매물 테이블 데이터 추출"""
+    listings = []
+
+    # 테이블 행 패턴: "매매  상가점포  한강로2가  단지내상가부동산뱅크  55/20  60,000  1/39  네이버페이부동산"
+    # 또는 "월세  상가점포  한강로2가  단지내상가  55/20  5,000/200  1/39"
+    pattern = re.compile(
+        r'(매매|전세|월세)\s+'          # 거래유형
+        r'(\S+)\s+'                     # 매물종류 (상가점포 등)
+        r'(\S+)\s+'                     # 소재지
+        r'(\S+(?:\s*\S+)?)\s+'          # 건물종류
+        r'(\d+/\d+)\s+'                 # 계약/전용면적
+        r'([\d,]+(?:/[\d,]+)?)\s+'      # 가격 (매매가 또는 보증금/월세)
+        r'(-?\d+/\d+)'                  # 층
+    )
+
+    for match in pattern.finditer(text):
+        trade_type = match.group(1)
+        property_type = match.group(2)
+        location = match.group(3)
+        building_type = match.group(4)
+        area_str = match.group(5)
+        price_str = match.group(6)
+        floor_str = match.group(7)
+
+        # 면적 파싱
+        area_parts = area_str.split("/")
+        contract_area = area_parts[0] if area_parts else ""
+        exclusive_area = area_parts[1] if len(area_parts) > 1 else ""
+
+        # 가격 파싱
         price = ""
         deposit = ""
         rent = ""
 
-        deal_price = art.get("dealOrWarrantPrc", "")
-        rent_price = art.get("rentPrc", "")
+        if trade_type == "매매":
+            price = f"매매 {price_str}만"
+        elif trade_type == "전세":
+            deposit = f"전세 {price_str}만"
+        elif trade_type == "월세":
+            if "/" in price_str:
+                parts = price_str.split("/")
+                deposit = f"보증금 {parts[0]}만"
+                rent = f"월세 {parts[1]}만"
+            else:
+                rent = f"월세 {price_str}만"
 
-        if "매매" in str(trade_type):
-            price = f"매매 {deal_price}"
-        elif "전세" in str(trade_type):
-            deposit = f"전세 {deal_price}"
-        elif "월세" in str(trade_type):
-            deposit = f"보증금 {deal_price}"
-            rent = f"월세 {rent_price}"
-        else:
-            price = deal_price
-
-        return {
-            "title": art.get("articleName", art.get("atclNm", "")),
-            "trade_type": str(trade_type),
+        listings.append({
+            "title": f"{location} {building_type}",
+            "trade_type": trade_type,
             "price": price,
             "deposit": deposit,
             "rent": rent,
-            "area": f"{art.get('area1', art.get('spc1', ''))}㎡",
-            "floor": art.get("floorInfo", art.get("atclFlrInfo", "")),
-            "address": art.get("roadAddress", art.get("address", "")),
-            "description": art.get("articleDesc", art.get("atclCfmYmd", "")),
-            "realtor": art.get("realtorName", art.get("rltrNm", "")),
-            "url": f"https://new.land.naver.com/offices?articleNo={art.get('articleNo', art.get('atclNo', ''))}",
-            "confirmed": art.get("isConfirm", art.get("cfmYn", "")) == "Y",
-        }
-    except Exception:
-        return None
-
-
-async def scrape_dom_listings(page, session_path):
-    """DOM 파싱으로 매물 리스트 추출 (API 캡처 실패 시 폴백)"""
-    listings = []
-
-    # 매물 리스트 셀렉터
-    item_selectors = [
-        ".item_inner",
-        "[class*='article_item']",
-        "li[class*='item']",
-        ".list_item",
-    ]
-
-    items = []
-    for sel in item_selectors:
-        try:
-            items = await page.query_selector_all(sel)
-            if items:
-                log(session_path, f"DOM 셀렉터 '{sel}'로 {len(items)}건 발견")
-                break
-        except Exception:
-            continue
-
-    for item in items:
-        try:
-            entry = {}
-
-            # 제목
-            title_el = await item.query_selector("[class*='name'], [class*='title'], .item_title")
-            if title_el:
-                entry["title"] = (await title_el.inner_text()).strip()
-
-            # 가격
-            price_el = await item.query_selector("[class*='price'], .price_line")
-            if price_el:
-                price_text = (await price_el.inner_text()).strip()
-                entry["price"] = price_text
-
-            # 면적
-            area_el = await item.query_selector("[class*='area'], [class*='spec']")
-            if area_el:
-                entry["area"] = (await area_el.inner_text()).strip()
-
-            # 층
-            floor_el = await item.query_selector("[class*='floor']")
-            if floor_el:
-                entry["floor"] = (await floor_el.inner_text()).strip()
-
-            if entry.get("title"):
-                entry.setdefault("trade_type", "")
-                entry.setdefault("deposit", "")
-                entry.setdefault("rent", "")
-                entry.setdefault("address", "")
-                entry.setdefault("description", "")
-                entry.setdefault("realtor", "")
-                entry.setdefault("url", "")
-                entry.setdefault("confirmed", False)
-                listings.append(entry)
-        except Exception:
-            continue
+            "area": f"계약 {contract_area}㎡ / 전용 {exclusive_area}㎡",
+            "floor": floor_str,
+            "address": location,
+            "description": f"{property_type} / {building_type}",
+            "realtor": "",
+            "url": "",
+            "confirmed": False,
+        })
 
     return listings
+
+
+def extract_ai_summary_listings(text):
+    """AI 요약 섹션에서 매물 정보 추출"""
+    listings = []
+
+    # AI 요약 패턴: "이촌동 점보상가  매매  6억 5,000만원  계약24.36㎡(전용24.36㎡)  이촌1동 먹자골목 내 1층"
+    pattern = re.compile(
+        r'(\S+(?:\s\S+)?)\s+'              # 매물명
+        r'(매매|전세|월세)\s+'               # 거래유형
+        r'([\d,]+(?:억\s*)?[\d,]*만?원?)\s+' # 가격
+        r'계약([\d.]+)㎡\(전용([\d.]+)㎡\)\s+' # 면적
+        r'(.+?)(?:\t|\n|$)'                # 위치/설명
+    )
+
+    for match in pattern.finditer(text):
+        name = match.group(1)
+        trade_type = match.group(2)
+        price_str = match.group(3)
+        contract_area = match.group(4)
+        exclusive_area = match.group(5)
+        desc = match.group(6).strip()
+
+        price = ""
+        deposit = ""
+        rent = ""
+
+        if trade_type == "매매":
+            price = f"매매 {price_str}"
+        elif trade_type == "전세":
+            deposit = f"전세 {price_str}"
+        elif trade_type == "월세":
+            rent = f"월세 {price_str}"
+
+        listings.append({
+            "title": name,
+            "trade_type": trade_type,
+            "price": price,
+            "deposit": deposit,
+            "rent": rent,
+            "area": f"계약 {contract_area}㎡ / 전용 {exclusive_area}㎡",
+            "floor": "",
+            "address": desc,
+            "description": desc,
+            "realtor": "",
+            "url": "",
+            "confirmed": False,
+        })
+
+    return listings
+
+
+def deduplicate_listings(listings):
+    """중복 매물 제거 (제목+가격 기준)"""
+    seen = set()
+    unique = []
+    for l in listings:
+        key = (l.get("title", ""), l.get("price", ""), l.get("deposit", ""), l.get("rent", ""))
+        if key not in seen:
+            seen.add(key)
+            unique.append(l)
+    return unique
 
 
 async def run(region, session_path):
@@ -249,20 +197,33 @@ async def run(region, session_path):
         )
         page = await context.new_page()
 
-        # 방법 1: API 캡처
-        listings = await capture_land_api(page, region, session_path)
+        # 네이버 검색 기반 매물 수집
+        listings = await search_naver_land_listings(page, region, session_path)
 
-        # 방법 2: DOM 파싱 폴백
-        if not listings:
-            log(session_path, "API 캡처 실패 — DOM 파싱 시도")
-            listings = await scrape_dom_listings(page, session_path)
+        # 추가: "매매" 전용 검색
+        if len([l for l in listings if l["trade_type"] == "매매"]) < 3:
+            random_delay(DELAY_SHORT)
+            sale_listings = await search_naver_land_listings(
+                page, f"{region} 상가 매매", session_path
+            )
+            listings.extend(sale_listings)
 
-        await page.screenshot(path=f"{session_path}/screenshots/naver-land-results.png")
+        # 추가: "월세" 전용 검색
+        if len([l for l in listings if l["trade_type"] == "월세"]) < 3:
+            random_delay(DELAY_SHORT)
+            rent_listings = await search_naver_land_listings(
+                page, f"{region} 상가 월세", session_path
+            )
+            listings.extend(rent_listings)
+
         await browser.close()
 
+    # 중복 제거
+    listings = deduplicate_listings(listings)
+
     # 매매/임대 분류
-    sale_listings = [l for l in listings if "매매" in str(l.get("trade_type", "")) or "매매" in str(l.get("price", ""))]
-    rent_listings = [l for l in listings if l not in sale_listings]
+    sale_listings = [l for l in listings if l.get("trade_type") == "매매"]
+    rent_listings = [l for l in listings if l.get("trade_type") in ("전세", "월세")]
 
     result = {
         "total": len(listings),

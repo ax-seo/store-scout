@@ -5,7 +5,7 @@ from config import (
     BROWSER_ARGS, VIEWPORT, USER_AGENT, DELAY_SHORT,
     save_json, load_json, log, random_delay
 )
-from step_1_1_naver_map_marts import search_naver_map, extract_from_api, deduplicate
+from step_1_1_naver_map_marts import search_via_api_intercept, search_via_iframe, deduplicate
 
 
 async def run(region, session_path):
@@ -24,14 +24,14 @@ async def run(region, session_path):
         page = await context.new_page()
 
         # API 캡처 우선
-        api_results = await extract_from_api(page, query, session_path)
+        api_results = await search_via_api_intercept(page, query, session_path)
 
         if api_results:
             all_results.extend(api_results)
         else:
-            # DOM 파싱 폴백
-            dom_results = await search_naver_map(page, query, session_path)
-            all_results.extend(dom_results)
+            # iframe 파싱 폴백
+            iframe_results = await search_via_iframe(page, query, session_path)
+            all_results.extend(iframe_results)
 
         await browser.close()
 
