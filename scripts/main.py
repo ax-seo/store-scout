@@ -166,10 +166,14 @@ def main():
 
     threshold = parse_threshold(args.threshold)
 
-    # headless 모드 설정
+    # headless 모드 설정 (오픈업은 headless 불가 — CloudFront 차단)
     if args.headless:
         from config import BROWSER_ARGS
         BROWSER_ARGS["headless"] = True
+    elif not args.skip_openup:
+        # 오픈업 사용 시 headless=False 강제
+        from config import BROWSER_ARGS
+        BROWSER_ARGS["headless"] = False
 
     # 각 지역별 실행
     for region in args.region:

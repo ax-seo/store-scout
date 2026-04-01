@@ -1,0 +1,400 @@
+[
+  {
+    "name": "_ga",
+    "value": "GA1.1.1895232780.1774859933",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1809585047.96147,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_maldive_oauth_webapp_session_key",
+    "value": "38e4d872c85a71ba2a2a48c336ee1b9f",
+    "domain": "accounts.kakao.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__T_",
+    "value": "1",
+    "domain": ".accounts.kakao.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__T_SECURE",
+    "value": "1",
+    "domain": ".accounts.kakao.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_kau",
+    "value": "ec20709165afb56fae51914f98fff6819ed61ec48fd8ebc9f6ecb922165b8d8ebf13f2647fe216ab08d7c5204129082de71fa259041f6c3fb448142b2fbf03a68bd32968971cc7ee172cee1f5d5a14179f89a98f31e664d5a40be4823bda93a2c539ecfcac84c9b42d6afb9ab9728854da6e6d4f4639283432333430343034373531303535303533363134393337323333313832313231b4d69473ff458d237705c73828a34884",
+    "domain": ".kakao.com",
+    "path": "/",
+    "expires": 1806395944.727927,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "TUID",
+    "value": "w-owTSqNlalpGy_260330173904611",
+    "domain": ".tiara.kakao.com",
+    "path": "/",
+    "expires": 1809419944.787859,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "UUID",
+    "value": "lT86-Ry-hINvUlyjnXZq6GZ1lBk6aM8cLDF2drDxe5h5mMpADxZW-A00",
+    "domain": ".tiara.kakao.com",
+    "path": "/",
+    "expires": 1809419944.787898,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_T_ANO",
+    "value": "P5pEU2pgFh2icH26O7MW2HMPpBFHbgeYcyYcVHrSoGcfqYZZHzVRSHJbeDy24Pu0hV4/W2aUynlL0gBnckzeAGFDbTzE2Lxgswu55k7vjtXFnCbH1cXifGS7kSnDD4cwZm0ue6aY+wVRulCxkP0Py2StXSSweZI/wuAS/fFvwP9O6OeNkfSIayx2UrN4SLdPaYsuUPpi93EusP3N5lN4/Rmia3jzaf43EcrRKGZe8QeyJZWyocXnn49sR5B86vCQ4joTVYcJ8x+0v5TzRfYGlaMqaljxwqeS9MxKpPEzCe42eqx9x8930x1zM33qQbVk1C/kRlT42JrdAv+dtDEb6g==",
+    "domain": ".kakao.com",
+    "path": "/",
+    "expires": 1809419944.787912,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "Access_Token",
+    "value": "fGnHO3A8bpqcu2RB4clotxaG15FBjrG2wWJAr5LMU22saFli",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "Refresh_Token",
+    "value": "e2iRaic5a8mcuWZCsslo4xeK18hIhuS2nDIUrZXLBmmpalw0",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "IDE",
+    "value": "AHWqTUnf6VGmYfuQEevag6tDXqMPTYKl7SoWmAgszd-7AVOP5VqvZEmFqmhloH_kbuI",
+    "domain": ".doubleclick.net",
+    "path": "/",
+    "expires": 1809584632.15541,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "mp_dca91a9f934519ded7d95c6fb5dbc772_mixpanel",
+    "value": "%7B%22distinct_id%22%3A%22%24device%3A5e638fdc-9326-492e-959f-95280bcfbb60%22%2C%22%24device_id%22%3A%225e638fdc-9326-492e-959f-95280bcfbb60%22%2C%22%24initial_referrer%22%3A%22%24direct%22%2C%22%24initial_referring_domain%22%3A%22%24direct%22%2C%22__mps%22%3A%7B%7D%2C%22__mpso%22%3A%7B%22%24initial_referrer%22%3A%22%24direct%22%2C%22%24initial_referring_domain%22%3A%22%24direct%22%7D%2C%22__mpus%22%3A%7B%7D%2C%22__mpa%22%3A%7B%7D%2C%22__mpu%22%3A%7B%7D%2C%22__mpr%22%3A%5B%5D%2C%22__mpap%22%3A%5B%5D%7D",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1806561047,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "FCCDCF",
+    "value": "%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C%5B%5B32%2C%22%5B%5C%2260b099c7-a2c6-4dd2-8daa-36005c09dc8a%5C%22%2C%5B1774859934%2C127000000%5D%5D%22%5D%5D%5D",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1808721050,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "FCNEC",
+    "value": "%5B%5B%22AKsRol_e5TdOH6_IbX9c3FkRmk0pcIvZMCdtl8o8Tf-XKWRKsZUVrT1XZnSeiEgq13W2eI6t4Rx79bez6DSt_3LkI3wW4vfm01C31c4o0E0rtr42L0qJAVyVYNiVLn2hJ0AOpIQur6nNGiLEz4cLuc7D08rWOmqhuw%3D%3D%22%5D%5D",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1806561050,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__gads",
+    "value": "ID=381e959f47a50fff:T=1775025096:RT=1775025096:S=ALNI_Mbfkpet4Do9xMqjf5PyTzLRheyLiQ",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1808721096,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__gpi",
+    "value": "UID=00001237072449ba:T=1775025096:RT=1775025096:S=ALNI_MZ_m5_qnv2kBJCQDsyDUbFRx-2XAg",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1808721096,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__eoi",
+    "value": "ID=ecce59c44c73f0f1:T=1775025096:RT=1775025096:S=AA-AfjZIo6SmrX8kgfGce_zUSEbQ",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1790577096,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cr",
+    "value": "1",
+    "domain": ".ladsp.com",
+    "path": "/",
+    "expires": 1775028696.527639,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "DSID",
+    "value": "NO_DATA",
+    "domain": ".doubleclick.net",
+    "path": "/",
+    "expires": 1775028696.550089,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "smn_uid",
+    "value": "U6ypOIilSfC-hOSphOQt8ylFmas_g_I",
+    "domain": ".ladsp.com",
+    "path": "/",
+    "expires": 1809585096.565487,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "lum",
+    "value": "COSO9r3UMxIFCAEQqAE",
+    "domain": ".ladsp.com",
+    "path": "/",
+    "expires": 1809585096.565515,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cto_bundle",
+    "value": "9EIt2l9LWjNZeTR0VnRnblM1eW1DTFc0NFhhd2h0TE5Wb1pQemtUNkFsSTJMRVNjbXVSWW12ZHdMOENxZkozSnprVGpPMDZmQiUyQkslMkZ5N1F5Uk1VaVllbFRiWDBGTGRFcXc2YTROTGxKSkF6eXZDc1olMkJBJTJCS01RRDJKQ0N1JTJGMHc5V2RURUQ",
+    "domain": ".criteo.com",
+    "path": "/",
+    "expires": 1808721096.582017,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://openub.com",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "uid",
+    "value": "e259f710-9764-49d9-838c-74ecea909498",
+    "domain": ".criteo.com",
+    "path": "/",
+    "expires": 1808721096.582066,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bito",
+    "value": "AATfCU7TmXgAAAA826uZfw",
+    "domain": ".bidr.io",
+    "path": "/",
+    "expires": 1809138696.631,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bitoIsSecure",
+    "value": "ok",
+    "domain": ".bidr.io",
+    "path": "/",
+    "expires": 1809138696.631032,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bcookie",
+    "value": "\"v=2&93a087b3-4d9a-45ae-8399-1663b34f0039\"",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1806561097.703508,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "lidc",
+    "value": "\"b=TGST06:s=T:r=T:a=T:p=T:g=3359:u=1:x=1:i=1775025096:t=1775111496:v=2:sig=AQHpU5kjeMdRET_V5q3eveK5YoEbVig4\"",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1775111497.703542,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "g",
+    "value": "QzSa1C8tpLokD95yX7o7_1775025097057",
+    "domain": ".creativecdn.com",
+    "path": "/",
+    "expires": 1806561097.196086,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "ts",
+    "value": "1775025097",
+    "domain": ".creativecdn.com",
+    "path": "/",
+    "expires": 1806561097.196123,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://openub.com",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "OAU",
+    "value": "OPUc6b07d6d975c4bf3bb6730a90f5f51dd",
+    "domain": ".opera.com",
+    "path": "/",
+    "expires": 1806561098.318232,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "yuidss",
+    "value": "5194973051775025097",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1809585097.385145,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bh",
+    "value": "EigiQ2hyb21pdW0iO3Y9IjE0NSIsICJOb3Q6QS1CcmFuZCI7dj0iOTkiKgI/MDoHIm1hY09TImDJ97LOBmoh3MrRtgG78Z+rBPrWhswI0tHt6wP8ua//B9/9k+EE84EC",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1809585097.385237,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "pi",
+    "value": "ila94MCNYCyEpMUeyOY7FzpWoW08USF5j1PpOoJnRrkmOMN2AfxmzJOQkhawE29m/99e0DdEN1X0c33cWXdKYWqoSFQ=",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1809585097.385196,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://openub.com",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "i",
+    "value": "8k833yzc/qBn4kqqTQ7IhhNt+TYjL9T5jTHAJW/6D4dYNVCrzdYfd5lQpOMZ2YQ7RrymglBzgk1spSKWJRum41Uj2fw=",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1809585097.38521,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "yandexuid",
+    "value": "4907844341775025097",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1809585097.385219,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "yashr",
+    "value": "561649091775025097",
+    "domain": ".yandex.ru",
+    "path": "/",
+    "expires": 1806561097.385227,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://openub.com",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "start_info",
+    "value": "ebc0208f-f2ec-4d0b-bad7-38c85275adbe",
+    "domain": "www.openub.com",
+    "path": "/",
+    "expires": 1775111501.46422,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_076TX86NK6",
+    "value": "GS2.1.s1775024632$o2$g1$t1775025101$j6$l0$h0",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1809585101.52176,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "mp_0daccf7465bf048a41d1ee7041e760ba_mixpanel",
+    "value": "%7B%22distinct_id%22%3A%22%24device%3A80ca9a92-d33a-47f6-85a6-45ec2dd0b22d%22%2C%22%24device_id%22%3A%2280ca9a92-d33a-47f6-85a6-45ec2dd0b22d%22%2C%22%24initial_referrer%22%3A%22%24direct%22%2C%22%24initial_referring_domain%22%3A%22%24direct%22%2C%22__mps%22%3A%7B%7D%2C%22__mpso%22%3A%7B%22%24initial_referrer%22%3A%22%24direct%22%2C%22%24initial_referring_domain%22%3A%22%24direct%22%7D%2C%22__mpus%22%3A%7B%7D%2C%22__mpa%22%3A%7B%7D%2C%22__mpu%22%3A%7B%7D%2C%22__mpr%22%3A%5B%5D%2C%22__mpap%22%3A%5B%5D%7D",
+    "domain": ".openub.com",
+    "path": "/",
+    "expires": 1806561101,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]

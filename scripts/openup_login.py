@@ -30,11 +30,25 @@ async def login_and_save():
         await page.goto(OPENUP_URL, wait_until="networkidle")
 
         print("브라우저에서 오픈업에 로그인하세요...")
-        print("로그인 완료 후 Enter를 누르세요: ", end="", flush=True)
+        print("로그인 완료 후 아래 파일을 생성하세요:")
 
-        # 비동기 입력 대기
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, input)
+        signal_file = "/tmp/store-scout-login-done"
+        # 이전 시그널 파일 삭제
+        if os.path.exists(signal_file):
+            os.remove(signal_file)
+
+        print(f"  touch {signal_file}")
+        print("대기 중...")
+
+        # 시그널 파일 대기 (5분 타임아웃)
+        for i in range(300):
+            if os.path.exists(signal_file):
+                os.remove(signal_file)
+                print("시그널 감지!")
+                break
+            await asyncio.sleep(1)
+        else:
+            print("⚠️ 타임아웃 (5분) — 현재 상태로 쿠키 저장 시도")
 
         # 쿠키 저장
         cookies = await context.cookies()
