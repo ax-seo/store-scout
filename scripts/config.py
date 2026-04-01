@@ -2,6 +2,8 @@
 import os
 import json
 import time
+import tempfile
+import platform
 
 # 디렉토리
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,13 +35,23 @@ BROWSER_ARGS = {
     "slow_mo": 100,
 }
 VIEWPORT = {"width": 1920, "height": 1080}
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    if platform.system() == "Windows"
+    else "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+
+# 크로스플랫폼 임시 디렉토리
+TEMP_BASE = os.path.join(tempfile.gettempdir(), "store-scout")
+SIGNAL_FILE = os.path.join(TEMP_BASE, "login-done")
 
 
 def create_session(region):
     """세션 디렉토리 생성 및 반환"""
     session_id = f"{region}_{time.strftime('%Y%m%d_%H%M%S')}"
-    session_path = f"/tmp/store-scout/{session_id}"
+    session_path = os.path.join(TEMP_BASE, session_id)
     screenshots_path = os.path.join(session_path, "screenshots")
     os.makedirs(screenshots_path, exist_ok=True)
 

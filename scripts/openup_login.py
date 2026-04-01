@@ -3,7 +3,7 @@ import asyncio
 import json
 import os
 from playwright.async_api import async_playwright
-from config import OPENUP_URL, OPENUP_COOKIES_PATH, VIEWPORT, USER_AGENT
+from config import OPENUP_URL, OPENUP_COOKIES_PATH, VIEWPORT, USER_AGENT, SIGNAL_FILE
 
 
 async def login_and_save():
@@ -32,12 +32,17 @@ async def login_and_save():
         print("브라우저에서 오픈업에 로그인하세요...")
         print("로그인 완료 후 아래 파일을 생성하세요:")
 
-        signal_file = "/tmp/store-scout-login-done"
+        signal_file = SIGNAL_FILE
+        # 시그널 파일 부모 디렉토리 보장
+        os.makedirs(os.path.dirname(signal_file), exist_ok=True)
         # 이전 시그널 파일 삭제
         if os.path.exists(signal_file):
             os.remove(signal_file)
 
-        print(f"  touch {signal_file}")
+        if os.name == "nt":
+            print(f'  echo. > "{signal_file}"')
+        else:
+            print(f"  touch {signal_file}")
         print("대기 중...")
 
         # 시그널 파일 대기 (5분 타임아웃)

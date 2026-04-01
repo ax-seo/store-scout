@@ -86,8 +86,34 @@ async def check_credits(page, session_path):
     return None
 
 
+async def is_login_redirect(page):
+    """로그인 페이지로 리다이렉트되었는지 확인"""
+    url = page.url
+    if "login" in url.lower():
+        return True
+    try:
+        body = await page.inner_text("body")
+        if "카카오로 시작하기" in body:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 async def search_store(page, store_name, session_path):
     """오픈업에서 매장 검색 → 상세 패널 열기"""
+    # 매번 오픈업 메인으로 이동
+    await page.goto(OPENUP_URL, wait_until="networkidle", timeout=30000)
+    await page.wait_for_timeout(3000)
+
+    # 로그인 리다이렉트 감지
+    if await is_login_redirect(page):
+        log(session_path, f"로그인 리다이렉트 감지 — 쿠키 만료: {store_name}")
+        return "LOGIN_REQUIRED"
+
+    # 팝업 닫기
+    await close_popup(page, session_path)
+
     # 검색창
     search = await page.query_selector('input[placeholder*="오픈업"]')
     if not search:
@@ -132,12 +158,23 @@ async def get_sales_data(page, store_name, session_path):
     already_opened = sales_match is not None
 
     if not already_opened:
+        # 조회 전 로그인 리다이렉트 체크
+        if await is_login_redirect(page):
+            log(session_path, f"로그인 리다이렉트 감지 — 쿠키 만료: {store_name}")
+            return "LOGIN_REQUIRED", 0
+
         # "매장 데이터 조회하기" 버튼 찾기 → 크레딧 차감
         query_btn = await page.query_selector('button:has-text("매장 데이터 조회하기")')
         if query_btn and await query_btn.is_visible():
             log(session_path, f"크레딧 차감 조회: {store_name}")
             await query_btn.click()
-            await page.wait_for_timeout(5000)
+            await page.wait_for_timeout(8000)
+
+            # 클릭 후 로그인 리다이렉트 체크
+            if await is_login_redirect(page):
+                log(session_path, f"조회 클릭 후 로그인 리다이렉트 감지: {store_name}")
+                return "LOGIN_REQUIRED", 0
+
             body = await page.inner_text("body")
         else:
             log(session_path, f"조회 버튼 없음: {store_name}")
@@ -284,25 +321,31 @@ async def run(session_path, threshold=DEFAULT_THRESHOLD, credit_limit=DEFAULT_CR
                 break
 
             store_name = mart["name"]
+            login_failed = False
 
             # 매장 검색 + 상세 패널
             found = await search_store(page, store_name, session_path)
 
-            if found:
+            if found == "LOGIN_REQUIRED":
+                login_failed = True
+            elif found:
                 monthly_sales, credit_used = await get_sales_data(page, store_name, session_path)
 
-                is_promising = monthly_sales is not None and monthly_sales >= threshold
-                total_credits_used += credit_used
+                if monthly_sales == "LOGIN_REQUIRED":
+                    login_failed = True
+                else:
+                    is_promising = monthly_sales is not None and monthly_sales >= threshold
+                    total_credits_used += credit_used
 
-                results.append({
-                    "name": store_name,
-                    "monthly_sales": monthly_sales,
-                    "monthly_sales_display": format_sales(monthly_sales),
-                    "is_promising": is_promising,
-                    "credit_used": credit_used,
-                })
+                    results.append({
+                        "name": store_name,
+                        "monthly_sales": monthly_sales,
+                        "monthly_sales_display": format_sales(monthly_sales),
+                        "is_promising": is_promising,
+                        "credit_used": credit_used,
+                    })
 
-                log(session_path, f"  {'✅' if is_promising else '❌'} {store_name} — {format_sales(monthly_sales)} (크레딧 {credit_used})")
+                    log(session_path, f"  {'✅' if is_promising else '❌'} {store_name} — {format_sales(monthly_sales)} (크레딧 {credit_used})")
             else:
                 results.append({
                     "name": store_name,
@@ -311,6 +354,19 @@ async def run(session_path, threshold=DEFAULT_THRESHOLD, credit_limit=DEFAULT_CR
                     "is_promising": False,
                     "credit_used": 0,
                 })
+
+            # 로그인 실패 시 나머지 전부 중단
+            if login_failed:
+                log(session_path, f"⚠️ 로그인 필요 — 쿠키 만료. 나머지 {len(marts) - i}건 중단")
+                for remaining in marts[i:]:
+                    results.append({
+                        "name": remaining["name"],
+                        "monthly_sales": None,
+                        "monthly_sales_display": "로그인 필요",
+                        "is_promising": False,
+                        "credit_used": 0,
+                    })
+                break
 
             # 다음 조회 전 딜레이
             if i < len(marts) - 1:
