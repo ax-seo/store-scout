@@ -1,8 +1,15 @@
-"""Step 3-1: 통합 리포트 생성"""
+"""Step 3-1: 통합 리포트 생성 (마크다운 + 엑셀)"""
 import os
 import time
 import shutil
 from config import save_json, load_json, log
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    HAS_OPENPYXL = True
+except ImportError:
+    HAS_OPENPYXL = False
 
 
 def generate_report(session_path, region, threshold_display="4억"):
@@ -159,9 +166,126 @@ def generate_report(session_path, region, threshold_display="4억"):
     shutil.copy2(report_path, downloads_path)
 
     log(session_path, f"리포트 저장: {downloads_path}")
+
+    # 엑셀 리포트 생성
+    xlsx_path = None
+    if HAS_OPENPYXL:
+        xlsx_path = generate_xlsx(session_path, region, threshold_display, marts, sales, agents, sale_listings, rent_listings)
+        log(session_path, f"엑셀 저장: {xlsx_path}")
+
     log(session_path, f"=== Step 3-1 완료 ===")
 
     return report_content, downloads_path
+
+
+def generate_xlsx(session_path, region, threshold_display, marts, sales, agents, sale_listings, rent_listings):
+    """엑셀 리포트 생성 — 시트 3개 (매출, 매물, 중개업소)"""
+    wb = Workbook()
+
+    # 스타일
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="D1006F", end_color="D1006F", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    cell_align = Alignment(vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin", color="DDDDDD"),
+        right=Side(style="thin", color="DDDDDD"),
+        top=Side(style="thin", color="DDDDDD"),
+        bottom=Side(style="thin", color="DDDDDD"),
+    )
+    positive_fill = PatternFill(start_color="E6F9F0", end_color="E6F9F0", fill_type="solid")
+    negative_fill = PatternFill(start_color="FFF0F0", end_color="FFF0F0", fill_type="solid")
+
+    def style_header(ws, row, cols):
+        for col in range(1, cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_align
+            cell.border = thin_border
+
+    def style_row(ws, row, cols, fill=None):
+        for col in range(1, cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.alignment = cell_align
+            cell.border = thin_border
+            if fill:
+                cell.fill = fill
+
+    # === 시트 1: 마트별 매출 ===
+    ws1 = wb.active
+    ws1.title = "마트 매출"
+    ws1.append(["#", "업소명", "주소", "월매출", "판정"])
+    style_header(ws1, 1, 5)
+
+    if sales:
+        for i, s in enumerate(sales, 1):
+            verdict = "유망" if s.get("is_promising") else "미달"
+            ws1.append([i, s.get("name", ""), "", s.get("monthly_sales_display", "미확인"), verdict])
+            fill = positive_fill if s.get("is_promising") else negative_fill if s.get("monthly_sales") else None
+            style_row(ws1, i + 1, 5, fill)
+    elif marts:
+        for i, m in enumerate(marts, 1):
+            ws1.append([i, m.get("name", ""), m.get("address", ""), "미확인", "-"])
+            style_row(ws1, i + 1, 5)
+
+    ws1.column_dimensions["A"].width = 5
+    ws1.column_dimensions["B"].width = 30
+    ws1.column_dimensions["C"].width = 40
+    ws1.column_dimensions["D"].width = 15
+    ws1.column_dimensions["E"].width = 10
+
+    # === 시트 2: 상가 매물 ===
+    ws2 = wb.create_sheet("상가 매물")
+    ws2.append(["#", "매물명", "거래유형", "가격", "보증금", "월세", "면적", "층"])
+    style_header(ws2, 1, 8)
+
+    all_listings = sale_listings + rent_listings
+    for i, l in enumerate(all_listings, 1):
+        ws2.append([
+            i,
+            l.get("title", ""),
+            l.get("trade_type", ""),
+            l.get("price", ""),
+            l.get("deposit", ""),
+            l.get("rent", ""),
+            l.get("area", ""),
+            l.get("floor", ""),
+        ])
+        style_row(ws2, i + 1, 8)
+
+    ws2.column_dimensions["A"].width = 5
+    ws2.column_dimensions["B"].width = 30
+    ws2.column_dimensions["C"].width = 10
+    ws2.column_dimensions["D"].width = 18
+    ws2.column_dimensions["E"].width = 18
+    ws2.column_dimensions["F"].width = 15
+    ws2.column_dimensions["G"].width = 25
+    ws2.column_dimensions["H"].width = 10
+
+    # === 시트 3: 부동산 중개업소 ===
+    ws3 = wb.create_sheet("부동산 중개업소")
+    ws3.append(["#", "업소명", "전화번호", "주소"])
+    style_header(ws3, 1, 4)
+
+    for i, a in enumerate(agents, 1):
+        ws3.append([i, a.get("name", ""), a.get("phone", ""), a.get("address", "")])
+        style_row(ws3, i + 1, 4)
+
+    ws3.column_dimensions["A"].width = 5
+    ws3.column_dimensions["B"].width = 30
+    ws3.column_dimensions["C"].width = 20
+    ws3.column_dimensions["D"].width = 50
+
+    # 저장
+    xlsx_filename = f"{region}-store-scout-{time.strftime('%Y%m%d')}.xlsx"
+    xlsx_session = os.path.join(session_path, "report.xlsx")
+    wb.save(xlsx_session)
+
+    xlsx_downloads = os.path.expanduser(f"~/Downloads/{xlsx_filename}")
+    shutil.copy2(xlsx_session, xlsx_downloads)
+
+    return xlsx_downloads
 
 
 def safe_load(path, default):
