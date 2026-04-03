@@ -33,7 +33,7 @@ Phase 3: 산출물
 
 ```powershell
 python --version
-pip --version
+python -m pip --version
 ```
 
 ### 2. 프로젝트 클론
@@ -57,16 +57,18 @@ python -m venv .venv
 ### 4. 의존성 설치
 
 ```powershell
-pip install playwright
-playwright install chromium
+python -m pip install playwright openpyxl
+python -m playwright install chromium
 ```
 
-`playwright install chromium`은 Chromium 브라우저를 자동 다운로드한다. 회사 프록시 환경에서 실패하면 아래 환경변수를 설정:
+`python -m playwright install chromium`은 Chromium 브라우저를 자동 다운로드한다. 회사 프록시 환경에서 실패하면 아래 환경변수를 설정:
 
 ```powershell
 $env:HTTPS_PROXY = "http://proxy.company.com:8080"
-playwright install chromium
+python -m playwright install chromium
 ```
+
+> `pip`/`playwright` 명령이 "인식되지 않습니다" 에러가 나면 반드시 `python -m pip`, `python -m playwright` 형태로 실행할 것.
 
 ### 5. 오픈업 로그인 (최초 1회)
 
@@ -83,7 +85,7 @@ python openup_login.py
 
 ```powershell
 # PowerShell
-echo. > "$env:TEMP\store-scout\login-done"
+New-Item -Force "$env:TEMP\store-scout\login-done"
 ```
 
 ```cmd
@@ -170,7 +172,7 @@ store-scout/
 
 ```powershell
 # 시스템 의존성 설치
-playwright install-deps chromium
+python -m playwright install-deps chromium
 ```
 
 Windows에서는 대부분 추가 의존성이 필요 없지만, 위 명령으로 확인 가능.
@@ -200,15 +202,10 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ### 인코딩 오류 (한글 깨짐)
 
-PowerShell 인코딩 설정:
+v1.0부터 자동으로 UTF-8 인코딩을 설정하므로 별도 조치 불필요.
+그래도 깨지면 PowerShell에서 아래 실행:
 
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $env:PYTHONIOENCODING = "utf-8"
-```
-
-CMD 인코딩 설정:
-
-```cmd
-chcp 65001
 ```

@@ -1,9 +1,15 @@
 """store-scout 공통 설정"""
 import os
 import json
+import sys
 import time
 import tempfile
 import platform
+
+# Windows cp949 인코딩 에러 방지
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # 디렉토리
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -4,6 +4,12 @@ import argparse
 import sys
 import os
 import time
+import io
+
+# Windows cp949 인코딩 에러 방지
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # 스크립트 디렉토리를 path에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
